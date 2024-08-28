@@ -1,0 +1,26 @@
+<!-- myapp/templates/myapp/add_data.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Add Data Form</title>
+</head>
+<body>
+    <h1>Add Data</h1>
+    <form method="POST" action="{% url 'add_data' %}">
+        {% csrf_token %}
+        <label for="input1">Input 1:</label>
+        <input type="text" name="input1"><br><br>
+
+        <label for="input2">Input 2:</label>
+        <input type="text" name="input2"><br><br>
+
+        <label for="checkbox1">Checkbox 1:</label>
+        <input type="checkbox" name="checkbox1"><br><br>
+
+        <label for="checkbox2">Checkbox 2:</label>
+        <input type="checkbox" name="checkbox2"><br><br>
+
+        <button type="submit">Submit</button>
+    </form>
+</body>
+</html>

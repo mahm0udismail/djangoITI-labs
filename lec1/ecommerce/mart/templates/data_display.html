@@ -1,0 +1,20 @@
+<!-- myapp/templates/myapp/data_display.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Product Selection</title>
+</head>
+<body>
+    <h1>Select Products</h1>
+    <form method="post" action="{% url 'get_data' %}">
+        {% csrf_token %}
+        {% for product, price in data.items %}
+            <label>
+                <input type="checkbox" name="products" value="{{ product }}">
+                {{ product }} - ${{ price }}
+            </label><br>
+        {% endfor %}
+        <button type="submit">Submit</button>
+    </form>
+</body>
+</html>
