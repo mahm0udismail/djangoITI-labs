@@ -3,15 +3,251 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DataFrame Display</title>
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+    <title>Order Management</title>
+    <!-- Link to External CSS -->
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+
+        .container {
+            width: 80%;
+            max-width: 900px;
+            margin: 20px auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+
+        table, th, td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f8f8f8;
+        }
+
+        td {
+            background-color: #fff;
+        }
+
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        label {
+            font-weight: bold;
+            color: #333;
+        }
+
+        input, select {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        button {
+            padding: 10px 15px;
+            border: none;
+            background-color: #007bff;
+            color: white;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+        <!-- Include CSRF token setup for security -->
+    <script>
+        // Helper function to get the CSRF token from the cookie
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        const csrftoken = getCookie('csrftoken');
+    </script>
 </head>
 <body>
-    <div class="container mt-5">
-        <h1>DataFrame Content</h1>
-        <div>
-            {{ df_html|safe }}
+    <div class="container">
+        <h1>Order Management</h1>
+
+        <!-- Search Input and Field Selector -->
+        <div style="margin-bottom: 20px;">
+            <label for="fieldSelector">Search by:</label>
+            <select id="fieldSelector" style="margin-right: 10px;">
+                <option value="orderID">Order ID</option>
+                <option value="orderName">Order Name</option>
+                <option value="userName">User Name</option>
+                <option value="status">Status</option>
+            </select>
+            <input type="text" id="searchInput" placeholder="Search..." onkeyup="filterTable()" style="padding: 10px; width: 100%; border: 1px solid #ddd; border-radius: 4px;">
+        </div>
+
+        <!-- Render the DataFrame as a table -->
+        {{ df_html|safe }}
+
+        <!-- Form for adding new orders -->
+        <form id="orderForm" method="post">
+            <label for="orderID">Order ID:</label>
+            <input type="number" name="orderID" id="orderID" required>
+
+            <label for="orderName">Order Name:</label>
+            <input type="text" name="orderName" id="orderName" required>
+
+            <label for="userName">User Name:</label>
+            <input type="text" name="userName" id="userName" required>
+
+            <!-- Dropdown for selecting status -->
+            <label for="status">Status:</label>
+            <select name="status" id="status" required>
+                {% for option in status_options %}
+                    <option value="{{ option }}">{{ option }}</option>
+                {% endfor %}
+            </select>
+
+            <button type="button" onclick="submitForm()">Submit</button>
+        </form>
+
+        <!-- Modal for displaying selected row details -->
+        <div id="detailsModal" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: white; padding: 20px; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);">
+            <h2>Order Details</h2>
+            <p id="modalContent"></p>
+            <button onclick="closeModal()">Close</button>
         </div>
     </div>
+
+    <script>
+        function submitForm() {
+            // Capture form data
+            const orderID = document.getElementById('orderID').value;
+            const orderName = document.getElementById('orderName').value;
+            const userName = document.getElementById('userName').value;
+            const status = document.getElementById('status').value;
+
+            // Create a JSON object with form data
+            const formData = {
+                orderID: orderID,
+                orderName: orderName,
+                userName: userName,
+                status: status
+            };
+
+            // Send the data using fetch
+            fetch('/tracking/postdata/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrftoken // Include CSRF token for security
+                },
+                body: JSON.stringify(formData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Success:', data);
+                alert(data.message); // Notify the user
+            })
+            .catch((error) => {
+                console.error('Error:', error);
+                alert('An error occurred.');
+            });
+        }
+
+        function filterTable() {
+            // Get the search input value and convert it to lowercase
+            const searchValue = document.getElementById('searchInput').value.toLowerCase();
+            // Get the selected field to search by
+            const selectedField = document.getElementById('fieldSelector').value;
+            // Get the table element
+            const table = document.querySelector('table');
+            // Get all rows in the table
+            const rows = table.getElementsByTagName('tr');
+
+            // Determine the column index based on the selected field
+            let fieldIndex = -1;
+            const headers = table.getElementsByTagName('th');
+            for (let i = 0; i < headers.length; i++) {
+                if (headers[i].textContent.trim().toLowerCase() === selectedField.toLowerCase()) {
+                    fieldIndex = i;
+                    break;
+                }
+            }
+
+            // Loop through all rows (skip the first row with headers)
+            for (let i = 1; i < rows.length; i++) {
+                const row = rows[i];
+                const cells = row.getElementsByTagName('td');
+                const cell = cells[fieldIndex];
+
+                if (cell) {
+                    const cellText = cell.textContent.toLowerCase();
+                    if (cellText.includes(searchValue)) {
+                        row.style.display = ''; // Show row
+                        row.style.cursor = 'pointer'; // Change cursor to pointer
+                        row.addEventListener('click', () => {
+                            showDetails(row);
+                        });
+                    } else {
+                        row.style.display = 'none'; // Hide row
+                        row.removeEventListener('click', () => {
+                            showDetails(row);
+                        });
+                    }
+                }
+            }
+        }
+
+        function showDetails(row) {
+            // Get the details of the clicked row
+            const cells = row.getElementsByTagName('td');
+            let details = '';
+            const headers = document.querySelectorAll('th');
+            for (let i = 0; i < cells.length; i++) {
+                details += `<strong>${headers[i].textContent.trim()}:</strong> ${cells[i].textContent}<br>`;
+            }
+
+            // Display details in the modal
+            document.getElementById('modalContent').innerHTML = details;
+            document.getElementById('detailsModal').style.display = 'block';
+        }
+
+        function closeModal() {
+            document.getElementById('detailsModal').style.display = 'none';
+        }
+    </script>
 </body>
 </html>
