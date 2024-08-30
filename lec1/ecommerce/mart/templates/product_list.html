@@ -1,0 +1,17 @@
+<!-- orders/templates/orders/product_list.html -->
+{% load static %}
+<h2>Product List</h2>
+<ul>
+    {% for product in products %}
+        <li>
+            <strong>{{ product.name }}</strong> - ${{ product.price }}
+            {% if product.image %}
+                <!-- Display the image if it exists -->
+                <img src="{{ product.image.url }}" alt="{{ product.name }}" style="width: 100px; height: auto;">
+            {% else %}
+                <!-- Placeholder if no image is available -->
+                <img src="{% static 'default.jpg' %}" alt="Default Image" style="width: 100px; height: auto;">
+            {% endif %}
+        </li>
+    {% endfor %}
+</ul>
