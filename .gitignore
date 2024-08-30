@@ -1,1 +1,2 @@
-/lec1/.venv
+.venv
+__pycache__
