@@ -22,7 +22,6 @@ urlpatterns = [
     path('tracking/', include('tracking_system.urls')),
     path('mart/', include('mart.urls')),
     path('prodects/', include('prodects.urls')),
-
-
+    path('login/', include('login.urls')),
 ]
 
