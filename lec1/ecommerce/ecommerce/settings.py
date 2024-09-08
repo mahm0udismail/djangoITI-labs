@@ -42,8 +42,8 @@ INSTALLED_APPS = [
     'tracking_system',
     'mart',
     'prodects',
-
-
+    'rest_framework',
+    'login',
 ]
 
 MIDDLEWARE = [

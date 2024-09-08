@@ -1,94 +1,6 @@
-# import json
-# import os
-# import pandas as pd
-# from django.shortcuts import render
-# from django.http import HttpResponse, JsonResponse
-# from django.views.decorators.csrf import csrf_exempt
-# from django.views.decorators.http import require_http_methods
-
-# # Create your views here.
-
-# file_path = 'orders.csv'
-
-# #endpoint home
-# def home(request):
-
-#     if os.path.exists(file_path):
-#         df = pd.read_csv(file_path)
-#     else:
-#         # Create a DataFrame
-#         df = pd.DataFrame({
-#             'orderID': [1, 2, 3],
-#             'orderName': ['Order A', 'Order B', 'Order C'],
-#             'userName': ['User 1', 'User 2', 'User 3'],
-#             'status': ['', '', '']
-#         })
-
-#         # Save the DataFrame to CSV
-#         df.to_csv(file_path, index=False)
-
-#     # Convert DataFrame to HTML for rendering
-#     df_html = df.to_html(classes='table table-striped')
-
-#     return render(request, 'home.html', {'df_html': df_html})
-
-
-# @csrf_exempt
-# @require_http_methods(["POST"])
-# def postdata(request):
-#     try:
-#         # Parse JSON data from the request body
-#         data = json.loads(request.body.decode('utf-8'))
-        
-#         # Extract fields from the JSON data
-#         order_id = data.get('orderID')
-#         order_name = data.get('orderName')
-#         user_name = data.get('userName')
-#         status = data.get('status')
-
-#         # Check if all required fields are present
-#         if not all([order_id, order_name, user_name, status]):
-#             return JsonResponse({'error': 'Missing required fields'}, status=400)
-
-#         # Check if file exists, if not create it with headers
-#         if os.path.exists(file_path):
-#             df = pd.read_csv(file_path)
-#         else:
-#             df = pd.DataFrame(columns=['orderID', 'orderName', 'userName', 'status'])
-
-#         # Create a new DataFrame for the new data
-#         new_data = pd.DataFrame([{
-#             'orderID': order_id,
-#             'orderName': order_name,
-#             'userName': user_name,
-#             'status': status
-#         }])
-
-#         # Concatenate the new data to the existing DataFrame
-#         df = pd.concat([df, new_data], ignore_index=True)
-
-#         # Save updated DataFrame to CSV
-#         df.to_csv(file_path, index=False)
-
-#         # Return a JSON response indicating success
-#         return JsonResponse({'message': 'Data saved successfully'}, status=201)
-
-#     except json.JSONDecodeError:
-#         return JsonResponse({'error': 'Invalid JSON'}, status=400)
-
-#     except Exception as e:
-#         return JsonResponse({'error': str(e)}, status=500)
-
-# def example_view(request):
-#     return render(request, '/index.html') 
-
-# ***************************************************************************************
-# EDIT
-# ***************************************************************************************
-
 import os
 import json
-import pandas as pd
+import csv
 from django.shortcuts import render
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
@@ -102,35 +14,35 @@ status_options = ['Pending', 'In Progress', 'Completed', 'Cancelled']
 
 # Home endpoint
 def home(request):
+    # Check if the CSV file exists
     if os.path.exists(file_path):
         # Read existing CSV file
-        df = pd.read_csv(file_path)
+        with open(file_path, 'r', newline='') as file:
+            reader = csv.DictReader(file)
+            orders = list(reader)
     else:
-        # Create a new DataFrame with default data
-        df = pd.DataFrame({
-            'orderID': [1, 2, 3],
-            'orderName': ['Order A', 'Order B', 'Order C'],
-            'userName': ['User 1', 'User 2', 'User 3'],
-            'status': ['', '', '']
-        })
-        # Save the DataFrame to CSV
-        df.to_csv(file_path, index=False)
+        # Create default data
+        orders = [
+            {'orderID': '1', 'orderName': 'Order A', 'userName': 'User 1', 'status': ''},
+            {'orderID': '2', 'orderName': 'Order B', 'userName': 'User 2', 'status': ''},
+            {'orderID': '3', 'orderName': 'Order C', 'userName': 'User 3', 'status': ''}
+        ]
 
-    # Convert DataFrame to HTML for rendering
-    df_html = df.to_html(classes='table table-striped')
+        # Write default data to CSV
+        with open(file_path, 'w', newline='') as file:
+            writer = csv.DictWriter(file, fieldnames=['orderID', 'orderName', 'userName', 'status'])
+            writer.writeheader()
+            writer.writerows(orders)
 
-    return render(request, 'home.html', {'df_html': df_html, 'status_options': status_options})
+    # Pass the data directly to the template
+    return render(request, 'home.html', {'orders': orders, 'status_options': status_options})
 
 @csrf_exempt
 @require_http_methods(["POST"])
 def postdata(request):
     try:
-        # Debugging: Print the raw request body
-        print("Raw request body:", request.body)
-
         # Parse JSON data from the request body
         data = json.loads(request.body.decode('utf-8'))
-        print(data)
 
         # Extract fields from the JSON data
         order_id = data.get('orderID')
@@ -148,35 +60,127 @@ def postdata(request):
 
         # Read or create the CSV file
         if os.path.exists(file_path):
-            df = pd.read_csv(file_path)
+            with open(file_path, 'r', newline='') as file:
+                reader = csv.DictReader(file)
+                orders = list(reader)
         else:
-            df = pd.DataFrame(columns=['orderID', 'orderName', 'userName', 'status'])
+            orders = []
 
-        # Create a new DataFrame for the new data
-        new_data = pd.DataFrame([{
-            'orderID': order_id,
-            'orderName': order_name,
-            'userName': user_name,
-            'status': status
-        }])
+        # Check for duplicate Order ID
+        if any(order['orderID'] == order_id for order in orders):
+            return JsonResponse({'error': 'Order ID must be unique'}, status=400)
 
-        # Append new data to the existing DataFrame
-        df = pd.concat([df, new_data], ignore_index=True)
+        # Add new data to the existing list
+        new_order = {'orderID': order_id, 'orderName': order_name, 'userName': user_name, 'status': status}
+        orders.append(new_order)
 
-        # Save updated DataFrame to CSV
-        df.to_csv(file_path, index=False)
+        # Write updated data back to CSV
+        with open(file_path, 'w', newline='') as file:
+            writer = csv.DictWriter(file, fieldnames=['orderID', 'orderName', 'userName', 'status'])
+            writer.writeheader()
+            writer.writerows(orders)
 
         # Return a success message
         return JsonResponse({'message': 'Data saved successfully'}, status=201)
 
     except json.JSONDecodeError:
-        print("Invalid JSON received")
         return JsonResponse({'error': 'Invalid JSON'}, status=400)
 
     except Exception as e:
-        print("An error occurred:", e)
         return JsonResponse({'error': str(e)}, status=500)
 
+@csrf_exempt
+@require_http_methods(["POST"])
+def delete_order(request):
+    try:
+        # Parse JSON data from the request body
+        data = json.loads(request.body.decode('utf-8'))
+        order_id = data.get('orderID')
+
+        # Check if orderID is provided
+        if not order_id:
+            return JsonResponse({'error': 'Order ID is required'}, status=400)
+
+        # Read existing CSV file
+        if os.path.exists(file_path):
+            with open(file_path, 'r', newline='') as file:
+                reader = csv.DictReader(file)
+                orders = list(reader)
+
+            # Remove the order with the specified orderID
+            orders = [order for order in orders if order['orderID'] != order_id]
+
+            # Write the updated data back to the CSV file
+            with open(file_path, 'w', newline='') as file:
+                writer = csv.DictWriter(file, fieldnames=['orderID', 'orderName', 'userName', 'status'])
+                writer.writeheader()
+                writer.writerows(orders)
+
+            return JsonResponse({'message': 'Order deleted successfully'}, status=200)
+        else:
+            return JsonResponse({'error': 'File not found'}, status=404)
+
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid JSON'}, status=400)
+
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def edit_order(request):
+    try:
+        # Parse JSON data from the request body
+        data = json.loads(request.body.decode('utf-8'))
+        order_id = data.get('orderID')
+        order_name = data.get('orderName')
+        user_name = data.get('userName')
+        status = data.get('status')
+
+        # Validate the presence of required fields
+        if not all([order_id, order_name, user_name, status]):
+            return JsonResponse({'error': 'Missing required fields'}, status=400)
+
+        # Validate the status
+        if status not in status_options:
+            return JsonResponse({'error': 'Invalid status value'}, status=400)
+
+        # Read existing CSV file
+        if os.path.exists(file_path):
+            with open(file_path, 'r', newline='') as file:
+                reader = csv.DictReader(file)
+                orders = list(reader)
+
+            # Find and update the order with the specified orderID
+            order_found = False
+            for order in orders:
+                if order['orderID'] == order_id:
+                    order['orderName'] = order_name
+                    order['userName'] = user_name
+                    order['status'] = status
+                    order_found = True
+                    break
+
+            # If order not found, return an error
+            if not order_found:
+                return JsonResponse({'error': 'Order not found'}, status=404)
+
+            # Write the updated data back to the CSV file
+            with open(file_path, 'w', newline='') as file:
+                writer = csv.DictWriter(file, fieldnames=['orderID', 'orderName', 'userName', 'status'])
+                writer.writeheader()
+                writer.writerows(orders)
+
+            return JsonResponse({'message': 'Order updated successfully'}, status=200)
+        else:
+            return JsonResponse({'error': 'File not found'}, status=404)
+
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid JSON'}, status=400)
+
+    except Exception as e:
+        # Catch all other exceptions and return an error message
+        return JsonResponse({'error': str(e)}, status=500)
 
 def example_view(request):
     return render(request, 'index.html')

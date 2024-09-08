@@ -9,4 +9,7 @@ from . import views
 urlpatterns = [
     path('', views.home, name='home'),  # URL pattern for the home view
     path('postdata/', views.postdata, name='postdata'),  # URL pattern for the postdata view
+    path('delete_order/', views.delete_order, name='delete_order'),  # URL pattern for the delete_order view
+    path('edit_order/', views.edit_order, name='edit_order'),  # URL pattern for the delete_order view
+
 ]
